@@ -1,3 +1,3 @@
-***bento-switch***
+# bento-switch
 
-Building a bento server with dynamic model loading for resource-constrained environments.
+A dynamic, demand-based model management system using BentoML.
