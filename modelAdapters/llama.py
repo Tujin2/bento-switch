@@ -10,24 +10,15 @@ from utils.responses import (
     ChatCompletionResponseChoice,
 )
 import time
-import uuid  # To generate unique IDs for responses
-import logging  # Import logging for error handling
+import uuid
+import logging 
 
 # Set up logging
-# Create a stream handler
 ch = logging.StreamHandler()
-
-# Set a format for the handler
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 ch.setFormatter(formatter)
-
-# Get the BentoML logger
 logger = logging.getLogger("bentoml")
-
-# Add the handler to the BentoML logger
 logger.addHandler(ch)
-
-# Set the desired logging level (e.g., DEBUG)
 logger.setLevel(logging.DEBUG)
 
 
@@ -93,25 +84,20 @@ class LlamaAdapter:
     def _generate_streaming_response(self, response, is_final=False):
         try:
             logger.debug(f"Processing a single streaming response chunk: {response}")
-
-            # Extract the text from the first choice in the chunk
             content = response["choices"][0]["text"]
 
-            # Prepare the delta structure similar to the LM Studio output
             delta = {"role": "assistant", "content": content}
 
             # Set finish_reason only if this is the final chunk
             finish_reason = "stop" if is_final else None
 
-            # Construct the choices list with delta
             choices = [{"index": 0, "delta": delta, "finish_reason": finish_reason}]
 
-            # Return the structured response
             return {
                 "id": str(uuid.uuid4()),
                 "object": "chat.completion.chunk",
                 "created": int(time.time()),
-                "model": "llama",  # Adjust model name if necessary
+                "model": "llama",
                 "choices": choices,
             }
         except Exception as e:

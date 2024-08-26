@@ -7,11 +7,9 @@ from typing import List, Optional
 import logging
 import json
 
-# Define the path to your GGUF model
 model_path = "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
 
 
-# Define Pydantic models for the input and output
 class Message(BaseModel):
     role: str
     content: str
@@ -33,7 +31,6 @@ class ChatCompletionResponse(BaseModel):
     usage: dict
 
 
-# Create a FastAPI app instance
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -92,7 +89,6 @@ class BentoSwitchService:
         logger.debug(f"Received max_tokens: {max_tokens}")
 
         try:
-            # Call the LlamaAdapter to get streaming responses
             response_generator = self.model.create_completion_openai(
                 messages=messages,
                 temperature=temperature,
@@ -100,7 +96,6 @@ class BentoSwitchService:
                 stream=True,
             )
 
-            # Yield each streaming response
             for response in response_generator:
                 yield f"data: {json.dumps(response)}\n\n"
 
