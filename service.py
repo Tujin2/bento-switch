@@ -8,14 +8,29 @@ from model_wrappers.wrapper_factory import WrapperFactory
 from api.schemas import (
     RawCompletionRequest,
     RawCompletionResponse,
-    ChatCompletionRequest
+    ChatCompletionRequest,
 )
 import typing as t
-
+import yaml
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Load model configuration
+with open("model_configs.yaml", "r") as file:
+    config = yaml.safe_load(file)
+    default_model_name = config["models"].get("default_model")
+
+    if not default_model_name:
+        logger.warning(
+            "No default model specified. Loading the first model from the list."
+        )
+        model_names = [name for name in config["models"] if name != "default_model"]
+        if model_names:
+            default_model_name = model_names[0]
+        else:
+            raise ValueError("No models found in the configuration file.")
 
 
 @bentoml.service(
@@ -36,12 +51,9 @@ logger = logging.getLogger(__name__)
 @bentoml.mount_asgi_app(app, path="/")
 class BentoSwitchService:
     def __init__(self):
-        # Initialize the LlamaAdapter model
-        self.model_wrapper = WrapperFactory.get_wrapper(
-            "Codestral-22B-v0.1"
-        )
+        self.model_wrapper = WrapperFactory.get_wrapper(default_model_name)
         self.formatter = FormatterFactory.get_formatter("openai")
-        self.model_id = "Codestral-22B-v0.1"
+        self.model_id = default_model_name
 
     @bentoml.api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
     async def create_chat_completion(self, **request: t.Any):

@@ -1,4 +1,5 @@
 models:
+  default_model: Codestral-22B-v0.1
   Codestral-22B-v0.1:
     type: llama
     path: "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
