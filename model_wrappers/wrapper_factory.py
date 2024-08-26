@@ -2,6 +2,7 @@ import yaml
 from typing import Dict, Type
 from .base import BaseModelWrapper
 from .llama import LLaMAWrapper
+from constants import DEFAULT_N_CONTEXT, DEFAULT_N_GPU_LAYERS
 
 
 class WrapperFactory:
@@ -35,9 +36,7 @@ class WrapperFactory:
         Get the appropriate model wrapper based on the model type.
 
         Args:
-            model_type (str): The type of the model (e.g., "llama", "mistral").
             model_name (str): The name of the model.
-            model_path (str): The path to the model file.
 
         Returns:
             BaseModelWrapper: An instance of the appropriate model wrapper.
@@ -56,10 +55,13 @@ class WrapperFactory:
         if not wrapper_class:
             raise ValueError(f"Unsupported model type: {model_config['type']}")
 
-        wrapper = wrapper_class(model_name, model_config["path"])
-
-        if "prompt_template" in model_config:
-            wrapper.set_prompt_template(model_config["prompt_template"])
+        wrapper = wrapper_class(
+            model_path=model_config["path"],
+            n_context=model_config.get("n_context", DEFAULT_N_CONTEXT),
+            n_gpu_layers=model_config.get("n_gpu_layers", DEFAULT_N_GPU_LAYERS),
+            prompt_template=model_config.get("prompt_template", ""),
+            auto_format=True,  # Assuming auto_format is a parameter you want to set
+        )
 
         return wrapper
 

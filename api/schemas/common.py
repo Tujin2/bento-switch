@@ -3,11 +3,11 @@ from typing import Optional
 
 
 class GenerationParameters(BaseModel):
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 50
-    top_p: Optional[float] = 1.0
-    top_k: Optional[int] = 0
-    stream: Optional[bool] = True
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    stream: Optional[bool] = None
 
 
 class Message(BaseModel):

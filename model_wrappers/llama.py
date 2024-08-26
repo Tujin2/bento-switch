@@ -8,13 +8,21 @@ logger = logging.getLogger("bentoml")
 
 
 class LLaMAWrapper(BaseModelWrapper):
+    def __init__(self, model_path: str, n_context: int, n_gpu_layers: int, prompt_template: str, auto_format: bool = True):
+        self.model_path = model_path
+        self.n_context = n_context
+        self.n_gpu_layers = n_gpu_layers
+        self.prompt_template = prompt_template
+        self.auto_format = auto_format
+        self.model = self.load_model()
+
     def load_model(self) -> Any:
         logger.debug(f"Initializing LLaMA model with path: {self.model_path}")
         try:
             return Llama(
                 model_path=self.model_path,
-                n_gpu_layers=-1,
-                n_ctx=17000,
+                n_gpu_layers=self.n_gpu_layers,
+                n_ctx=self.n_context,
             )
         except Exception as e:
             logger.error(f"Error initializing LLaMA model: {e}")

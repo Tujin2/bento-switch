@@ -1,13 +1,15 @@
+default_model: Codestral-22B-v0.1
 models:
-  default_model: Codestral-22B-v0.1
   Codestral-22B-v0.1:
     type: llama
     path: "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
     prompt_template: "<s> [INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{prompt} [/INST] </s>"
     default_params:
       temperature: 0.7
-      max_tokens: 1500
+      max_tokens: 2000
       top_p: 0.8
       top_k: 40
       stream: True
+    n_context: 17000
+    n_gpu_layers: -1
   # Add more models here as needed
