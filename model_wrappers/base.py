@@ -3,12 +3,14 @@ from typing import List, Any
 
 
 class BaseModelWrapper(ABC):
+    DEFAULT_PROMPT_TEMPLATE = "System: {system_prompt}\nUser: {prompt}"
+
     def __init__(self, model_name: str, model_path: str, auto_format: bool = True):
         self.model_name = model_name
         self.model_path = model_path
         self.auto_format = auto_format
         self.model = self.load_model()
-        self.prompt_template = ""
+        self.prompt_template = self.DEFAULT_PROMPT_TEMPLATE
 
     def set_prompt_template(self, template: str):
         """Set the prompt template for the model."""

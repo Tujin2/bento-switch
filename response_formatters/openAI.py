@@ -20,7 +20,7 @@ class OpenAIResponseFormatter(BaseResponseFormatter):
             "id": f"chatcmpl-{uuid.uuid4().hex[:24]}",
             "object": "chat.completion",
             "created": int(time.time()),
-            "model": self._format_model_name(raw_response.get("model", "unknown")),
+            "model": raw_response.get("model", "unknown"),
             "choices": self._format_choices(raw_response["choices"]),
             "usage": raw_response.get(
                 "usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
