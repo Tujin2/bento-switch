@@ -1,31 +1,14 @@
 from __future__ import annotations
 import bentoml
 from modelAdapters import LlamaAdapter
-from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException
 from typing import List, Optional
 import logging
 import json
 # from model_wrappers import WrapperFactory
-from api.schemas import Message, RawCompletionRequest, RawCompletionResponse
+from api.schemas import Message, RawCompletionRequest, RawCompletionResponse, ChatCompletionRequest, ChatCompletionResponse
 
 model_path = "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
-
-
-class ChatCompletionRequest(BaseModel):
-    model: str
-    messages: List[Message]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 50
-
-
-class ChatCompletionResponse(BaseModel):
-    id: str
-    object: str = "chat.completion"
-    created: int
-    model: str
-    choices: List[dict]
-    usage: dict
 
 
 app = FastAPI()
@@ -72,6 +55,7 @@ class BentoSwitchService:
             logger.error(f"Error in create_chat_completion: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
+    # TODO: Update to use the new schemas
     @bentoml.api(route="/v1/chat/completions")
     def create_chat_completion_stream(
         self,

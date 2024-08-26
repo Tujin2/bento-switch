@@ -1,12 +1,10 @@
 from pydantic import BaseModel
-from typing import List, Optional
-from .common import Message
+from typing import List
+from .common import Message, GenerationParameters
 
 
-class RawCompletionRequest(BaseModel):
+class RawCompletionRequest(GenerationParameters):
     messages: List[Message]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 50
 
 
 class RawCompletionResponse(BaseModel):
