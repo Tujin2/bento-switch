@@ -11,7 +11,7 @@ from utils.responses import (
 )
 import time
 import uuid
-import logging 
+import logging
 
 # Set up logging
 ch = logging.StreamHandler()
