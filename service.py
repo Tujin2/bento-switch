@@ -7,13 +7,9 @@ from typing import List, Optional
 import logging
 import json
 # from model_wrappers import WrapperFactory
+from api.schemas import Message, RawCompletionRequest, RawCompletionResponse
 
 model_path = "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
-
-
-class Message(BaseModel):
-    role: str
-    content: str
 
 
 class ChatCompletionRequest(BaseModel):
@@ -30,16 +26,6 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: List[dict]
     usage: dict
-
-
-class RawCompletionRequest(BaseModel):
-    messages: List[Message]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 50
-
-
-class RawCompletionResponse(BaseModel):
-    raw_output: dict
 
 
 app = FastAPI()
