@@ -5,7 +5,7 @@ from llama_cpp import Llama
 from openai.types.chat import (
     ChatCompletionMessage,
 )
-from utils.responses import (
+from api.schemas import (
     ChatCompletionResponse,
     ChatCompletionResponseChoice,
 )
