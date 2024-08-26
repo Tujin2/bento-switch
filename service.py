@@ -12,8 +12,6 @@ from api.schemas import (
 )
 import typing as t
 
-model_path = "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
-
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -40,16 +38,19 @@ class BentoSwitchService:
     def __init__(self):
         # Initialize the LlamaAdapter model
         self.model_wrapper = WrapperFactory.get_wrapper(
-            "bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
+            "Codestral-22B-v0.1"
         )
         self.formatter = FormatterFactory.get_formatter("openai")
         self.model_id = "Codestral-22B-v0.1"
 
-    # TODO: Update to use the new schemas
     @bentoml.api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
     async def create_chat_completion(self, **request: t.Any):
         logger.info("Chat completion started")
         logger.debug(f"Received request: {request}")
+
+        # Reset the formatter's stream-specific attributes
+        self.formatter.current_stream_id = None
+        self.formatter.creation_timestamp = None
 
         try:
             messages = request.get("messages", [])
