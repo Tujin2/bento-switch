@@ -11,26 +11,21 @@ from api.schemas import (
     ChatCompletionRequest,
 )
 import typing as t
-import yaml
+from constants import (
+    DEFAULT_TEMPERATURE,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_TOP_P,
+    DEFAULT_TOP_K,
+    DEFAULT_STREAM,
+)
+from config_loader import load_model_configs
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load model configuration
-with open("model_configs.yaml", "r") as file:
-    config = yaml.safe_load(file)
-    default_model_name = config["models"].get("default_model")
-
-    if not default_model_name:
-        logger.warning(
-            "No default model specified. Loading the first model from the list."
-        )
-        model_names = [name for name in config["models"] if name != "default_model"]
-        if model_names:
-            default_model_name = model_names[0]
-        else:
-            raise ValueError("No models found in the configuration file.")
+default_model_name, model_defaults = load_model_configs()
 
 
 @bentoml.service(
@@ -67,14 +62,29 @@ class BentoSwitchService:
         try:
             messages = request.get("messages", [])
             prompt = self.model_wrapper.create_prompt(messages)
-            stream = request.get("stream", False)
+            stream = request.get("stream", DEFAULT_STREAM)
+
+            model_specific_defaults = model_defaults.get(self.model_id, {})
+            stream = request.get(
+                "stream", model_specific_defaults.get("stream", DEFAULT_STREAM)
+            )
 
             response = self.model_wrapper.get_response(
                 prompt,
-                temperature=request.get("temperature", 0.8),
-                max_tokens=request.get("max_tokens", 2000),
-                top_p=request.get("top_p", 0.7),
-                top_k=request.get("top_k", 50),
+                temperature=request.get(
+                    "temperature",
+                    model_specific_defaults.get("temperature", DEFAULT_TEMPERATURE),
+                ),
+                max_tokens=request.get(
+                    "max_tokens",
+                    model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS),
+                ),
+                top_p=request.get(
+                    "top_p", model_specific_defaults.get("top_p", DEFAULT_TOP_P)
+                ),
+                top_k=request.get(
+                    "top_k", model_specific_defaults.get("top_k", DEFAULT_TOP_K)
+                ),
                 stream=stream,
             )
             logger.debug(f"Raw response from model: {response}")
