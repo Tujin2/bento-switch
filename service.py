@@ -74,7 +74,7 @@ class BentoSwitchService:
                 temperature=request.get("temperature", 0.8),
                 max_tokens=request.get("max_tokens", 2000),
                 top_p=request.get("top_p", 0.7),
-                top_k=request.get("top_k", 0),
+                top_k=request.get("top_k", 50),
                 stream=stream,
             )
             logger.debug(f"Raw response from model: {response}")
@@ -114,52 +114,6 @@ class BentoSwitchService:
                 yield f"data: {json.dumps(error_response)}\n\n"
             else:
                 yield error_response
-
-    async def non_stream_response(self, request, prompt):
-        response = self.model_wrapper.get_response(
-            prompt,
-            temperature=request.get("temperature", 0.8),
-            max_tokens=request.get("max_tokens", 2000),
-            top_p=request.get("top_p", 0.7),
-            top_k=request.get("top_k", 0),
-            stream=False,
-        )
-        logger.debug(f"Raw response from model: {response}")
-        formatted_response = self.formatter.format_response(
-            {**response, "model": self.model_id}, False
-        )
-        return formatted_response
-
-    def stream_response(self, request, prompt):
-        response_generator = self.model_wrapper.get_response(
-            prompt,
-            temperature=request.get("temperature", 0.8),
-            max_tokens=request.get("max_tokens", 2000),
-            top_p=request.get("top_p", 0.7),
-            top_k=request.get("top_k", 0),
-            stream=True,
-        )
-
-        async def generate():
-            for raw_response in response_generator:
-                logger.debug(f"Raw response from model: {raw_response}")
-                try:
-                    formatted_response = self.formatter.format_response(
-                        {**raw_response, "model": self.model_id}, True
-                    )
-                    yield f"data: {json.dumps(formatted_response)}\n\n"
-                except AttributeError as ae:
-                    logger.error(f"AttributeError in formatting response: {str(ae)}")
-                    logger.error(f"Raw response causing error: {raw_response}")
-                    continue
-                except Exception as e:
-                    logger.error(f"Error in formatting response: {str(e)}")
-                    logger.error(f"Raw response causing error: {raw_response}")
-                    continue
-
-            yield "data: [DONE]\n\n"
-
-        return generate()
 
     @bentoml.api(route="/v1/raw_completion")
     async def create_raw_completion(
