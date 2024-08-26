@@ -6,6 +6,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from typing import List, Optional
 import logging
 import json
+# from model_wrappers import WrapperFactory
 
 model_path = "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
 
@@ -29,6 +30,16 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: List[dict]
     usage: dict
+
+
+class RawCompletionRequest(BaseModel):
+    messages: List[Message]
+    temperature: Optional[float] = 0.7
+    max_tokens: Optional[int] = 50
+
+
+class RawCompletionResponse(BaseModel):
+    raw_output: dict
 
 
 app = FastAPI()
@@ -56,6 +67,7 @@ class BentoSwitchService:
     def __init__(self):
         # Initialize the LlamaAdapter model
         self.model = LlamaAdapter(model_path)
+        # self.new_wrapper = WrapperFactory.get_wrapper("llama", "Codestral-22B-v0.1", model_path)
         self.model_id = "Codestral-22B-v0.1"
 
     @app.post("/v1/chat/completions_nostream")
@@ -103,6 +115,23 @@ class BentoSwitchService:
         except Exception as e:
             logger.error(f"Error in create_chat_completion_stream: {str(e)}")
             yield f"data: {str(e)}\n\n"
+
+    @bentoml.api(route="/v1/raw_completion")
+    async def create_raw_completion(
+        self, request: RawCompletionRequest
+    ) -> RawCompletionResponse:
+        try:
+            prompt = self.new_wrapper.create_prompt(request.messages)
+            raw_output = self.new_wrapper.get_response(
+                prompt,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+            )
+            logger.info("Raw completion successful")
+            return RawCompletionResponse(raw_output=raw_output)
+        except Exception as e:
+            logger.error(f"Error in create_raw_completion: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/v1/models")
     def list_models(self):
