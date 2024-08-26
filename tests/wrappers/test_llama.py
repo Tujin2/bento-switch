@@ -10,7 +10,14 @@ class TestLLaMAWrapper(unittest.TestCase):
     def setUp(self, mock_llama):
         self.mock_model = MagicMock()
         mock_llama.return_value = self.mock_model
-        self.wrapper = LLaMAWrapper("llama-7b", "/path/to/llama/model")
+        self.wrapper = LLaMAWrapper(
+            model_path="/path/to/llama/model",
+            n_context=2048,
+            n_gpu_layers=-1,
+            prompt_template="<s> [INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{prompt} [/INST] </s>",
+            auto_format=True
+        )
+        self.wrapper.model_name = "llama-7b"  # Ensure model_name is set
 
     def test_create_prompt(self):
         messages = [Message(role="user", content="Hello, how are you?")]

@@ -27,7 +27,7 @@ class TestWrapperFactory(unittest.TestCase):
         self.assertIsInstance(wrapper, LLaMAWrapper)
         self.assertIsInstance(wrapper, BaseModelWrapper)
         mock_llama.assert_called_once_with(
-            model_path="/path/to/llama/model", n_gpu_layers=-1, n_ctx=17000
+            model_path="/path/to/llama/model", n_gpu_layers=-1, n_ctx=2048  # defaults
         )
 
     @patch(
@@ -61,6 +61,9 @@ class TestWrapperFactory(unittest.TestCase):
     )
     def test_register_wrapper(self, mock_open, mock_llama):
         class DummyWrapper(BaseModelWrapper):
+            def __init__(self, model_path, **kwargs):
+                self.model_path = model_path
+
             def load_model(self):
                 return MagicMock()
 
