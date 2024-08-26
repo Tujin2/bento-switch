@@ -8,6 +8,11 @@ class BaseModelWrapper(ABC):
         self.model_path = model_path
         self.auto_format = auto_format
         self.model = self.load_model()
+        self.prompt_template = ""
+
+    def set_prompt_template(self, template: str):
+        """Set the prompt template for the model."""
+        self.prompt_template = template
 
     @abstractmethod
     def load_model(self) -> Any:

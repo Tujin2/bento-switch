@@ -1,6 +1,7 @@
+import yaml
 from typing import Dict, Type
-from model_wrappers.base import BaseModelWrapper
-from model_wrappers.llama import LLaMAWrapper
+from .base import BaseModelWrapper
+from .llama import LLaMAWrapper
 
 
 class WrapperFactory:
@@ -22,15 +23,14 @@ class WrapperFactory:
         # Register a new wrapper class
         WrapperFactory.register_wrapper("new_model", NewModelWrapper)
     """
+
     _wrappers: Dict[str, Type[BaseModelWrapper]] = {
         "llama": LLaMAWrapper,
         # Add more wrappers here as they are implemented
     }
 
     @classmethod
-    def get_wrapper(
-        cls, model_type: str, model_name: str, model_path: str
-    ) -> BaseModelWrapper:
+    def get_wrapper(cls, model_name: str) -> BaseModelWrapper:
         """
         Get the appropriate model wrapper based on the model type.
 
@@ -45,11 +45,23 @@ class WrapperFactory:
         Raises:
             ValueError: If the model type is not supported.
         """
-        wrapper_class = cls._wrappers.get(model_type.lower())
-        if wrapper_class is None:
-            raise ValueError(f"Unsupported model type: {model_type}")
+        with open("model_configs.yaml", "r") as file:
+            config = yaml.safe_load(file)
 
-        return wrapper_class(model_name=model_name, model_path=model_path)
+        model_config = config["models"].get(model_name)
+        if not model_config:
+            raise ValueError(f"Model {model_name} not found in configuration")
+
+        wrapper_class = cls._wrappers.get(model_config["type"].lower())
+        if not wrapper_class:
+            raise ValueError(f"Unsupported model type: {model_config['type']}")
+
+        wrapper = wrapper_class(model_name, model_config["path"])
+
+        if "prompt_template" in model_config:
+            wrapper.set_prompt_template(model_config["prompt_template"])
+
+        return wrapper
 
     @classmethod
     def register_wrapper(cls, model_type: str, wrapper_class: Type[BaseModelWrapper]):

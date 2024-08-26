@@ -1,0 +1,6 @@
+models:
+  Codestral-22B-v0.1:
+    type: llama
+    path: "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
+    prompt_template: "<s> [INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{prompt} [/INST] </s>"
+  # Add more models here as needed

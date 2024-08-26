@@ -1,12 +1,17 @@
 from __future__ import annotations
 import bentoml
-from modelAdapters import LlamaAdapter
 from fastapi import FastAPI, Depends, HTTPException
-from typing import List, Optional
 import logging
 import json
-# from model_wrappers import WrapperFactory
-from api.schemas import Message, RawCompletionRequest, RawCompletionResponse, ChatCompletionRequest, ChatCompletionResponse
+from response_formatters.formatter_factory import FormatterFactory
+from model_wrappers.wrapper_factory import WrapperFactory
+from api.schemas import (
+    RawCompletionRequest,
+    RawCompletionResponse,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+)
+import typing as t
 
 model_path = "c:/models/bartowski/Codestral-22B-v0.1-GGUF/Codestral-22B-v0.1-Q6_K.gguf"
 
@@ -35,8 +40,11 @@ logger = logging.getLogger(__name__)
 class BentoSwitchService:
     def __init__(self):
         # Initialize the LlamaAdapter model
-        self.model = LlamaAdapter(model_path)
-        # self.new_wrapper = WrapperFactory.get_wrapper("llama", "Codestral-22B-v0.1", model_path)
+        # self.model = LlamaAdapter(model_path)
+        self.model_wrapper = WrapperFactory.get_wrapper(
+            "Codestral-22B-v0.1"
+        )
+        self.formatter = FormatterFactory.get_formatter("openai")
         self.model_id = "Codestral-22B-v0.1"
 
     @app.post("/v1/chat/completions_nostream")
@@ -56,35 +64,44 @@ class BentoSwitchService:
             raise HTTPException(status_code=500, detail=str(e))
 
     # TODO: Update to use the new schemas
-    @bentoml.api(route="/v1/chat/completions")
-    def create_chat_completion_stream(
-        self,
-        model: str,
-        messages: List[Message],
-        temperature: Optional[float] = 0.9,
-        max_tokens: Optional[int] = 1000,
-    ):
+    @bentoml.api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
+    async def create_chat_completion_stream(self, **request: t.Any):
         logger.info("Chat completion stream started")
-        logger.debug(f"Received model: {model}")
-        logger.debug(f"Received messages: {messages}")
-        logger.debug(f"Received temperature: {temperature}")
-        logger.debug(f"Received max_tokens: {max_tokens}")
+        logger.debug(f"Received request: {request}")
 
         try:
-            response_generator = self.model.create_completion_openai(
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
+            messages = request.get('messages', [])
+            prompt = self.model_wrapper.create_prompt(messages)
+            response_generator = self.model_wrapper.get_response(
+                prompt,
+                temperature=request.get("temperature", 0.8),
+                max_tokens=request.get("max_tokens", 2000),
+                top_p=request.get("top_p", 0.7),
+                top_k=request.get("top_k", 0),
+                stream=request.get("stream", True),
             )
 
-            for response in response_generator:
-                yield f"data: {json.dumps(response)}\n\n"
+            for raw_response in response_generator:
+                logger.debug(f"Raw response from model: {raw_response}")
+                try:
+                    formatted_response = self.formatter.format_response(raw_response)
+                    yield f"data: {json.dumps(formatted_response)}\n\n"
+                except AttributeError as ae:
+                    logger.error(f"AttributeError in formatting response: {str(ae)}")
+                    logger.error(f"Raw response causing error: {raw_response}")
+                    # Handle the error gracefully, possibly by skipping this response
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in formatting response: {str(e)}")
+                    logger.error(f"Raw response causing error: {raw_response}")
+                    # Handle other exceptions as needed
+                    continue
 
             yield "data: [DONE]\n\n"  # Signal that streaming is complete
         except Exception as e:
             logger.error(f"Error in create_chat_completion_stream: {str(e)}")
-            yield f"data: {str(e)}\n\n"
+            error_response = {"error": {"message": str(e), "type": "internal_error"}}
+            yield f"data: {json.dumps(error_response)}\n\n"
 
     @bentoml.api(route="/v1/raw_completion")
     async def create_raw_completion(

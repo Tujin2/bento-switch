@@ -1,15 +1,10 @@
 from typing import List, Any
 from llama_cpp import Llama
-from pydantic import BaseModel
 from .base import BaseModelWrapper
+from api.schemas import Message
 import logging
 
 logger = logging.getLogger("bentoml")
-
-
-class Message(BaseModel):
-    role: str
-    content: str
 
 
 class LLaMAWrapper(BaseModelWrapper):
@@ -27,12 +22,27 @@ class LLaMAWrapper(BaseModelWrapper):
 
     def create_prompt(self, messages: List[Message]) -> str:
         logger.debug(f"Creating prompt from {len(messages)} messages")
-        if self.auto_format:
-            return "\n".join([f"{msg.role}: {msg.content}" for msg in messages])
-        else:
-            return messages[
-                -1
-            ].content  # Return only the last message if auto_format is False
+        try:
+            if self.auto_format:
+                system_prompt = next(
+                    (msg.content for msg in messages if msg.role == "system"), ""
+                )
+                user_messages = [msg.content for msg in messages if msg.role == "user"]
+                prompt = "\n".join(user_messages)
+                formatted_prompt = self.prompt_template.format(
+                    system_prompt=system_prompt, prompt=prompt
+                )
+                logger.debug(
+                    f"Formatted prompt: {formatted_prompt[:100]}..."
+                )  # Log first 100 chars
+                return formatted_prompt
+            else:
+                return messages[
+                    -1
+                ].content  # Return only the last message if auto_format is False
+        except Exception as e:
+            logger.error(f"Error in create_prompt: {str(e)}")
+            raise ValueError(f"Failed to create prompt: {str(e)}")
 
     def get_response(self, prompt: str, **kwargs) -> Any:
         logger.debug(f"Generating response for prompt: {prompt[:50]}...")
@@ -45,8 +55,6 @@ class LLaMAWrapper(BaseModelWrapper):
     def format_output(self, raw_output: Any) -> dict:
         logger.debug("Formatting model output")
         try:
-            # Implement the formatting logic here
-            # This is a placeholder implementation
             return {
                 "id": "chatcmpl-123",
                 "object": "chat.completion",
