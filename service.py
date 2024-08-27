@@ -60,7 +60,7 @@ class BentoSwitchService:
         # Reset the formatter's stream-specific attributes
         self.formatter.current_stream_id = None
         self.formatter.creation_timestamp = None
-        # Extract model-specific defaults
+
         model_specific_defaults = model_defaults.get(self.model_id, {}).get(
             "default_params", {}
         )
@@ -149,8 +149,8 @@ class BentoSwitchService:
             {
                 "id": model_name,
                 "object": "model",
-                "created": 1677610602,  # You might want to replace this with actual creation time if available
-                "owned_by": "organization-owner",  # Replace with actual owner if available
+                "created": 1677610602,
+                "owned_by": "organization-owner",
             }
             for model_name in model_configs.keys()
         ]
