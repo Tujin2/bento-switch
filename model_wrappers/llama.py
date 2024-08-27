@@ -31,23 +31,21 @@ class LLaMAWrapper(BaseModelWrapper):
     def create_prompt(self, messages: List[Message]) -> str:
         logger.debug(f"Creating prompt from {len(messages)} messages")
         try:
-            if self.auto_format:
-                system_prompt = next(
-                    (msg.content for msg in messages if msg.role == "system"), ""
-                )
-                user_messages = [msg.content for msg in messages if msg.role == "user"]
-                prompt = "\n".join(user_messages)
-                formatted_prompt = self.prompt_template.format(
-                    system_prompt=system_prompt, prompt=prompt
-                )
-                logger.debug(
-                    f"Formatted prompt: {formatted_prompt[:100]}..."
-                )  # Log first 100 chars
-                return formatted_prompt
-            else:
-                return messages[
-                    -1
-                ].content  # Return only the last message if auto_format is False
+            system_prompt = next(
+                (msg.content for msg in messages if msg.role == "system"), ""
+            )
+            conversation_history = "\n".join(
+                f"{msg.role}: {msg.content}" for msg in messages if msg.role in {"user", "assistant"}
+            )
+
+            formatted_prompt = self.prompt_template.format(
+                system_prompt=system_prompt, prompt=conversation_history
+            )
+
+            logger.debug(
+                f"Formatted prompt: {formatted_prompt[:100]}..."
+            )  # Log first 100 chars
+            return formatted_prompt
         except Exception as e:
             logger.error(f"Error in create_prompt: {str(e)}")
             raise ValueError(f"Failed to create prompt: {str(e)}")

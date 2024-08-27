@@ -146,7 +146,7 @@ class BentoSwitchService:
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/v1/models")
-    def list_models():
+    def list_models(self):
         _, model_configs = load_model_configs()
         models_list = [
             {
