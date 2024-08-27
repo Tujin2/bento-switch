@@ -143,17 +143,20 @@ class BentoSwitchService:
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/v1/models")
-    def list_models(self):
+    def list_models():
+        _, model_configs = load_model_configs()
+        models_list = [
+            {
+                "id": model_name,
+                "object": "model",
+                "created": 1677610602,  # You might want to replace this with actual creation time if available
+                "owned_by": "organization-owner",  # Replace with actual owner if available
+            }
+            for model_name in model_configs.keys()
+        ]
         return {
             "object": "list",
-            "data": [
-                {
-                    "id": self.model_id,
-                    "object": "model",
-                    "created": 1677610602,
-                    "owned_by": "organization-owner",
-                }
-            ],
+            "data": models_list,
         }
 
 
