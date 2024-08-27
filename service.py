@@ -1,25 +1,28 @@
 from __future__ import annotations
-import bentoml
-from fastapi import FastAPI, Depends, HTTPException
-import logging
+
 import json
-from response_formatters.formatter_factory import FormatterFactory
-from model_wrappers.wrapper_factory import WrapperFactory
+import logging
+import typing as t
+
+import bentoml
+from fastapi import Depends, FastAPI, HTTPException
+
 from api.schemas import (
+    ChatCompletionRequest,
     RawCompletionRequest,
     RawCompletionResponse,
-    ChatCompletionRequest,
 )
-import typing as t
-from constants import (
-    DEFAULT_TEMPERATURE,
-    DEFAULT_MAX_TOKENS,
-    DEFAULT_TOP_P,
-    DEFAULT_TOP_K,
-    DEFAULT_STREAM,
-)
-from config_loader import load_model_configs
 from api.schemas.common import GenerationParameters
+from config_loader import load_model_configs
+from constants import (
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_STREAM,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TOP_K,
+    DEFAULT_TOP_P,
+)
+from model_wrappers.wrapper_factory import WrapperFactory
+from response_formatters.formatter_factory import FormatterFactory
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
