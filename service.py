@@ -21,6 +21,7 @@ from constants import (
     DEFAULT_TOP_K,
     DEFAULT_TOP_P,
 )
+from model_wrappers.exceptions import ModelNotFoundException, ModelLoadException
 from model_wrappers.model_manager import ModelManager
 from response_formatters.formatter_factory import FormatterFactory
 
@@ -54,21 +55,26 @@ class BentoSwitchService:
         self.default_model_name = default_model_name
         self.formatter = FormatterFactory.get_formatter("openai")
         # Load the default model
-        self.model_manager.load_model(self.default_model_name)
+        try:
+            self.model_manager.switch_model(self.default_model_name)
+        except (ModelNotFoundException, ModelLoadException) as e:
+            logger.error(f"Failed to load default model: {str(e)}")
 
     @bentoml.api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
     async def create_chat_completion(self, **request: t.Any):
-        logger.info("Chat completion started")
-        logger.debug(f"Received request: {request}")
+        model_name = request.get("model", self.model_manager.get_current_model_name())
+        try:
+            self.model_manager.switch_model(model_name)
+        except ModelNotFoundException as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ModelLoadException as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        model_wrapper = self.model_manager.get_current_model()
 
         # Reset the formatter's stream-specific attributes
         self.formatter.current_stream_id = None
         self.formatter.creation_timestamp = None
-
-        model_name = request.get("model", self.model_manager.get_current_model_name())
-        success, model_wrapper = self.model_manager.load_model(model_name)
-        if not success:
-            raise HTTPException(status_code=500, detail=f"Failed to load model: {model_name}")
 
         model_specific_defaults = model_defaults.get(model_name, {}).get(
             "default_params", {}
@@ -146,57 +152,36 @@ class BentoSwitchService:
     ) -> RawCompletionResponse:
         try:
             model_name = (
-                request.model if hasattr(request, "model") else self.model_manager.get_current_model_name()
+                request.model
+                if hasattr(request, "model")
+                else self.model_manager.get_current_model_name()
             )
-            success, model_wrapper = self.model_manager.load_model(model_name)
-            if not success:
-                raise HTTPException(status_code=500, detail=f"Failed to load model: {model_name}")
-            prompt = model_wrapper.create_prompt(request.messages)
-            raw_output = model_wrapper.get_response(
-                prompt,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-            )
-            logger.info("Raw completion successful")
-            return RawCompletionResponse(raw_output=raw_output)
-        except Exception as e:
-            logger.error(f"Error in create_raw_completion: {str(e)}")
+            self.model_manager.switch_model(model_name)
+        except ModelNotFoundException as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ModelLoadException as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    @app.get("/v1/models")
-    def list_models(self):
-        _, model_configs = load_model_configs()
-        models_list = [
-            {
-                "id": model_name,
-                "object": "model",
-                "created": 1677610602,
-                "owned_by": "organization-owner",
-            }
-            for model_name in model_configs.keys()
-        ]
-        return {
-            "object": "list",
-            "data": models_list,
-        }
+        model_wrapper = self.model_manager.get_current_model()
+
+        prompt = model_wrapper.create_prompt(request.messages)
+        raw_output = model_wrapper.get_response(
+            prompt,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+        )
+        logger.info("Raw completion successful")
+        return RawCompletionResponse(raw_output=raw_output)
 
     @bentoml.api(route="/switch_model")
     async def switch_model(self, model_name: str):
-        _, model_configs = load_model_configs()
-        if model_name not in model_configs:
-            logger.error(f"Model '{model_name}' not found in configurations")
-            raise HTTPException(
-                status_code=404, detail=f"Model '{model_name}' not found"
-            )
-
-        success, _ = self.model_manager.load_model(model_name)
-        if success:
+        try:
+            self.model_manager.switch_model(model_name)
             return {"message": f"Successfully switched to model: {model_name}"}
-        else:
-            logger.error(f"Failed to switch to model: {model_name}")
-            raise HTTPException(
-                status_code=500, detail=f"Failed to load model: {model_name}"
-            )
+        except ModelNotFoundException as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ModelLoadException as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/service-info")

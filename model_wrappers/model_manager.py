@@ -3,6 +3,8 @@ from .base import BaseModelWrapper
 import logging
 import time
 import gc
+from exceptions import ModelNotFoundException, ModelLoadException
+from config_loader import load_model_configs
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,9 @@ class ModelManager:
 
     def load_model(self, model_name: str) -> tuple[bool, BaseModelWrapper]:
         if self.current_model_name != model_name:
-            logger.info(f"Attempting to switch from {self.current_model_name} to {model_name}")
+            logger.info(
+                f"Attempting to switch from {self.current_model_name} to {model_name}"
+            )
             if self.loaded_model:
                 self.loaded_model.cleanup()
                 self.loaded_model = None
@@ -42,3 +46,16 @@ class ModelManager:
 
     def is_model_loaded(self, model_name: str) -> bool:
         return self.current_model_name == model_name
+
+    def switch_model(self, model_name: str) -> None:
+        _, model_configs = load_model_configs()
+        if model_name not in model_configs:
+            logger.error(f"Model '{model_name}' not found in configurations")
+            raise ModelNotFoundException(f"Model '{model_name}' not found")
+
+        success, _ = self.load_model(model_name)
+        if not success:
+            logger.error(f"Failed to switch to model: {model_name}")
+            raise ModelLoadException(f"Failed to load model: {model_name}")
+
+        logger.info(f"Successfully switched to model: {model_name}")
