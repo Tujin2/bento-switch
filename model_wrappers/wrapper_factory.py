@@ -59,8 +59,12 @@ class WrapperFactory:
             model_path=model_config["path"],
             n_context=model_config.get("n_context", DEFAULT_N_CONTEXT),
             n_gpu_layers=model_config.get("n_gpu_layers", DEFAULT_N_GPU_LAYERS),
-            prompt_template=model_config.get("prompt_template", ""),
-            auto_format=True,  # Assuming auto_format is a parameter you want to set
+            prompt_template=model_config.get("prompt_template"),
+            system_message_template=model_config.get("system_message_template"),
+            conversation_message_template=model_config.get(
+                "conversation_message_template"
+            ),
+            auto_format=True,
         )
 
         return wrapper

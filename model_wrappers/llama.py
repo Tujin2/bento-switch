@@ -8,15 +8,31 @@ logger = logging.getLogger("bentoml")
 
 
 class LLaMAWrapper(BaseModelWrapper):
-    def __init__(self, model_path: str, n_context: int, n_gpu_layers: int, prompt_template: str, auto_format: bool = True):
-        self.model_path = model_path
+    def __init__(
+        self,
+        model_path: str,
+        n_context: int,
+        n_gpu_layers: int,
+        prompt_template: str = None,
+        system_message_template: str = None,
+        conversation_message_template: str = None,
+        auto_format: bool = True,
+    ):
         self.n_context = n_context
         self.n_gpu_layers = n_gpu_layers
-        self.prompt_template = prompt_template
-        self.auto_format = auto_format
-        self.model = self.load_model()
+        super().__init__(
+            model_name="llama", model_path=model_path, auto_format=auto_format
+        )
+        if prompt_template:
+            self.set_prompt_template(prompt_template)
+        if system_message_template:
+            self.set_system_message_template(system_message_template)
+        if conversation_message_template:
+            self.set_conversation_message_template(conversation_message_template)
+        self.initialize_model()  # Call this after all attributes are set
 
     def load_model(self) -> Any:
+        logger.debug(f"load_model called, self.n_gpu_layers: {self.n_gpu_layers}")
         logger.debug(f"Initializing LLaMA model with path: {self.model_path}")
         try:
             return Llama(
@@ -34,16 +50,25 @@ class LLaMAWrapper(BaseModelWrapper):
             system_prompt = next(
                 (msg.content for msg in messages if msg.role == "system"), ""
             )
+            formatted_system_prompt = self.system_message_template.format(
+                system_prompt=system_prompt
+            )
+
             conversation_history = "\n".join(
-                f"{msg.role}: {msg.content}" for msg in messages if msg.role in {"user", "assistant"}
+                self.conversation_message_template.format(
+                    role=msg.role, content=msg.content
+                )
+                for msg in messages[-15:]
+                if msg.role in {"user", "assistant"}
             )
 
             formatted_prompt = self.prompt_template.format(
-                system_prompt=system_prompt, prompt=conversation_history
+                system_prompt=formatted_system_prompt,
+                conversation_history=conversation_history,
             )
 
             logger.debug(
-                f"Formatted prompt: {formatted_prompt[:100]}..."
+                f"Formatted prompt: {formatted_prompt[:500]}..."
             )  # Log first 100 chars
             return formatted_prompt
         except Exception as e:
