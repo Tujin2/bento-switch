@@ -52,8 +52,9 @@ class BentoSwitchService:
     def __init__(self):
         self.model_manager = ModelManager()
         self.default_model_name = default_model_name
-        self.current_model_name = self.default_model_name
         self.formatter = FormatterFactory.get_formatter("openai")
+        # Load the default model
+        self.model_manager.load_model(self.default_model_name)
 
     @bentoml.api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
     async def create_chat_completion(self, **request: t.Any):
@@ -64,9 +65,10 @@ class BentoSwitchService:
         self.formatter.current_stream_id = None
         self.formatter.creation_timestamp = None
 
-        model_name = request.get("model", self.current_model_name)
-        model_wrapper = self.model_manager.load_model(model_name)
-        self.current_model_name = model_name
+        model_name = request.get("model", self.model_manager.get_current_model_name())
+        success, model_wrapper = self.model_manager.load_model(model_name)
+        if not success:
+            raise HTTPException(status_code=500, detail=f"Failed to load model: {model_name}")
 
         model_specific_defaults = model_defaults.get(model_name, {}).get(
             "default_params", {}
@@ -144,11 +146,11 @@ class BentoSwitchService:
     ) -> RawCompletionResponse:
         try:
             model_name = (
-                request.model if hasattr(request, "model") else self.current_model_name
+                request.model if hasattr(request, "model") else self.model_manager.get_current_model_name()
             )
-            model_wrapper = self.model_manager.load_model(model_name)
-            self.current_model_name = model_name
-
+            success, model_wrapper = self.model_manager.load_model(model_name)
+            if not success:
+                raise HTTPException(status_code=500, detail=f"Failed to load model: {model_name}")
             prompt = model_wrapper.create_prompt(request.messages)
             raw_output = model_wrapper.get_response(
                 prompt,
@@ -180,17 +182,25 @@ class BentoSwitchService:
 
     @bentoml.api(route="/switch_model")
     async def switch_model(self, model_name: str):
-        try:
-            self.model_manager.load_model(model_name)
-            self.current_model_name = model_name
-            return {"message": f"Switched to model: {model_name}"}
-        except Exception as e:
-            logger.error(f"Error switching model: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+        _, model_configs = load_model_configs()
+        if model_name not in model_configs:
+            logger.error(f"Model '{model_name}' not found in configurations")
+            raise HTTPException(
+                status_code=404, detail=f"Model '{model_name}' not found"
+            )
+
+        success, _ = self.model_manager.load_model(model_name)
+        if success:
+            return {"message": f"Successfully switched to model: {model_name}"}
+        else:
+            logger.error(f"Failed to switch to model: {model_name}")
+            raise HTTPException(
+                status_code=500, detail=f"Failed to load model: {model_name}"
+            )
 
 
 @app.get("/service-info")
 async def service_info(
     service: BentoSwitchService = Depends(bentoml.get_current_service),
 ):
-    return f"Service is using model: {service.current_model_name}"
+    return f"Service is using model: {service.model_manager.get_current_model_name()}"
