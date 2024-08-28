@@ -21,7 +21,7 @@ from constants import (
     DEFAULT_TOP_K,
     DEFAULT_TOP_P,
 )
-from model_wrappers.wrapper_factory import WrapperFactory
+from model_wrappers.model_manager import ModelManager
 from response_formatters.formatter_factory import FormatterFactory
 
 app = FastAPI()
@@ -50,10 +50,10 @@ default_model_name, model_defaults = load_model_configs()
 @bentoml.mount_asgi_app(app, path="/")
 class BentoSwitchService:
     def __init__(self):
-        self.model_id = default_model_name
-        self.model_wrapper = WrapperFactory.get_wrapper(self.model_id)
+        self.model_manager = ModelManager()
+        self.default_model_name = default_model_name
+        self.current_model_name = self.default_model_name
         self.formatter = FormatterFactory.get_formatter("openai")
-        self.model_id = default_model_name
 
     @bentoml.api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
     async def create_chat_completion(self, **request: t.Any):
@@ -64,7 +64,11 @@ class BentoSwitchService:
         self.formatter.current_stream_id = None
         self.formatter.creation_timestamp = None
 
-        model_specific_defaults = model_defaults.get(self.model_id, {}).get(
+        model_name = request.get("model", self.current_model_name)
+        model_wrapper = self.model_manager.load_model(model_name)
+        self.current_model_name = model_name
+
+        model_specific_defaults = model_defaults.get(model_name, {}).get(
             "default_params", {}
         )
 
@@ -73,25 +77,31 @@ class BentoSwitchService:
             temperature=request.get(
                 "temperature",
                 model_specific_defaults.get("temperature", DEFAULT_TEMPERATURE),
-            ) or DEFAULT_TEMPERATURE,
+            )
+            or DEFAULT_TEMPERATURE,
             max_tokens=request.get(
-                "max_tokens", model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS)
-            ) or DEFAULT_MAX_TOKENS,
+                "max_tokens",
+                model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS),
+            )
+            or DEFAULT_MAX_TOKENS,
             top_p=request.get(
                 "top_p", model_specific_defaults.get("top_p", DEFAULT_TOP_P)
-            ) or DEFAULT_TOP_P,
+            )
+            or DEFAULT_TOP_P,
             top_k=request.get(
                 "top_k", model_specific_defaults.get("top_k", DEFAULT_TOP_K)
-            ) or DEFAULT_TOP_K,
+            )
+            or DEFAULT_TOP_K,
             stream=request.get(
                 "stream", model_specific_defaults.get("stream", DEFAULT_STREAM)
-            ) or DEFAULT_STREAM,
+            )
+            or DEFAULT_STREAM,
         )
 
         messages = request.get("messages", [])
-        prompt = self.model_wrapper.create_prompt(messages)
+        prompt = model_wrapper.create_prompt(messages)
 
-        response = self.model_wrapper.get_response(
+        response = model_wrapper.get_response(
             prompt,
             temperature=generation_params.temperature,
             max_tokens=generation_params.max_tokens,
@@ -133,8 +143,14 @@ class BentoSwitchService:
         self, request: RawCompletionRequest
     ) -> RawCompletionResponse:
         try:
-            prompt = self.new_wrapper.create_prompt(request.messages)
-            raw_output = self.new_wrapper.get_response(
+            model_name = (
+                request.model if hasattr(request, "model") else self.current_model_name
+            )
+            model_wrapper = self.model_manager.load_model(model_name)
+            self.current_model_name = model_name
+
+            prompt = model_wrapper.create_prompt(request.messages)
+            raw_output = model_wrapper.get_response(
                 prompt,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
@@ -162,9 +178,19 @@ class BentoSwitchService:
             "data": models_list,
         }
 
+    @bentoml.api(route="/switch_model")
+    async def switch_model(self, model_name: str):
+        try:
+            self.model_manager.load_model(model_name)
+            self.current_model_name = model_name
+            return {"message": f"Switched to model: {model_name}"}
+        except Exception as e:
+            logger.error(f"Error switching model: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/service-info")
 async def service_info(
     service: BentoSwitchService = Depends(bentoml.get_current_service),
 ):
-    return f"Service is using model: {service.model_id}"
+    return f"Service is using model: {service.current_model_name}"
