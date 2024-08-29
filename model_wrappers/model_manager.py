@@ -3,7 +3,7 @@ from .base import BaseModelWrapper
 import logging
 import time
 import gc
-from exceptions import ModelNotFoundException, ModelLoadException
+from .exceptions import ModelNotFoundException, ModelLoadException
 from config_loader import load_model_configs
 
 logger = logging.getLogger(__name__)
