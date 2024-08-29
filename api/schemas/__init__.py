@@ -5,6 +5,7 @@ from .openAI import (
     ChatCompletionResponse,
     ChatCompletionResponseChoice,
     ChatCompletionStreamResponse,
+    ImageGenerationRequest,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "ChatCompletionResponse",
     "ChatCompletionResponseChoice",
     "ChatCompletionStreamResponse",
+    "ImageGenerationRequest",
 ]

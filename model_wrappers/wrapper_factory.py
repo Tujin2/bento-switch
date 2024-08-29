@@ -2,7 +2,9 @@ import yaml
 from typing import Dict, Type
 from .base import BaseModelWrapper
 from .llama import LLaMAWrapper
+from .flux import FluxWrapper
 from constants import DEFAULT_N_CONTEXT, DEFAULT_N_GPU_LAYERS
+import torch
 
 
 class WrapperFactory:
@@ -27,6 +29,7 @@ class WrapperFactory:
 
     _wrappers: Dict[str, Type[BaseModelWrapper]] = {
         "llama": LLaMAWrapper,
+        "flux": FluxWrapper,
         # Add more wrappers here as they are implemented
     }
 
@@ -55,17 +58,25 @@ class WrapperFactory:
         if not wrapper_class:
             raise ValueError(f"Unsupported model type: {model_config['type']}")
 
-        wrapper = wrapper_class(
-            model_path=model_config["path"],
-            n_context=model_config.get("n_context", DEFAULT_N_CONTEXT),
-            n_gpu_layers=model_config.get("n_gpu_layers", DEFAULT_N_GPU_LAYERS),
-            prompt_template=model_config.get("prompt_template"),
-            system_message_template=model_config.get("system_message_template"),
-            conversation_message_template=model_config.get(
-                "conversation_message_template"
-            ),
-            auto_format=True,
-        )
+        if model_config["type"].lower() == "flux":
+            wrapper = wrapper_class(
+                model_path=model_config["path"],
+                torch_dtype=getattr(torch, model_config.get("torch_dtype", "bfloat16")),
+                enable_cpu_offload=model_config.get("enable_cpu_offload", True),
+                auto_format=True,
+            )
+        else:
+            wrapper = wrapper_class(
+                model_path=model_config["path"],
+                n_context=model_config.get("n_context", DEFAULT_N_CONTEXT),
+                n_gpu_layers=model_config.get("n_gpu_layers", DEFAULT_N_GPU_LAYERS),
+                prompt_template=model_config.get("prompt_template"),
+                system_message_template=model_config.get("system_message_template"),
+                conversation_message_template=model_config.get(
+                    "conversation_message_template"
+                ),
+                auto_format=True,
+            )
 
         return wrapper
 

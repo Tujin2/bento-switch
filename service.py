@@ -11,6 +11,7 @@ from api.schemas import (
     ChatCompletionRequest,
     RawCompletionRequest,
     RawCompletionResponse,
+    ImageGenerationRequest,
 )
 from api.schemas.common import GenerationParameters
 from config_loader import load_model_configs
@@ -182,6 +183,41 @@ class BentoSwitchService:
             raise HTTPException(status_code=404, detail=str(e))
         except ModelLoadException as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @bentoml.api(route="/v1/images/generations", input_spec=ImageGenerationRequest)
+    async def create_image(self, **request: t.Any):
+        model_name = request.get("model", self.model_manager.get_current_model_name())
+        try:
+            self.model_manager.switch_model(model_name)
+        except ModelNotFoundException as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ModelLoadException as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        model_wrapper = self.model_manager.get_current_model()
+
+        prompt = request.get("prompt", "")
+        n = request.get("n", 1)
+        size = request.get("size", "1024x1024")
+
+        try:
+            width, height = map(int, size.split("x"))
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid size format. Use 'WIDTHxHEIGHT'."
+            )
+
+        images = []
+        for _ in range(n):
+            raw_image = model_wrapper.get_response(
+                prompt,
+                height=height,
+                width=width,
+            )
+            images.append(raw_image)
+
+        formatted_response = self.formatter.format_image_response(images, model_name)
+        return formatted_response
 
 
 @app.get("/service-info")
