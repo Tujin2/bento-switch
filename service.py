@@ -219,6 +219,23 @@ class BentoSwitchService:
         formatted_response = self.formatter.format_image_response(images, model_name)
         return formatted_response
 
+    @app.get("/v1/models")
+    def list_models(self):
+        _, model_configs = load_model_configs()
+        models_list = [
+            {
+                "id": model_name,
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "organization-owner",
+            }
+            for model_name in model_configs.keys()
+        ]
+        return {
+            "object": "list",
+            "data": models_list,
+        }
+
 
 @app.get("/service-info")
 async def service_info(

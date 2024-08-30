@@ -3,6 +3,12 @@ from diffusers import FluxPipeline
 from typing import Any
 from .base import BaseModelWrapper
 import logging
+import os
+from dotenv import load_dotenv
+from huggingface_hub import login
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger("bentoml")
 
@@ -22,14 +28,23 @@ class FluxWrapper(BaseModelWrapper):
         self.enable_cpu_offload = enable_cpu_offload
         self.pipe = None
 
+        # Authenticate with Hugging Face
+        hf_token = os.getenv("HUGGINGFACE_TOKEN")
+        if hf_token:
+            login(token=hf_token)
+        else:
+            logger.warning("HUGGINGFACE_TOKEN not found in environment variables. You may not be able to download private models.")
+
     def load_model(self) -> FluxPipeline:
         logger.debug(f"Initializing Flux model with path: {self.model_path}")
         try:
             self.pipe = FluxPipeline.from_pretrained(
-                self.model_path, torch_dtype=self.torch_dtype
+                self.model_path, torch_dtype=self.torch_dtype, use_auth_token=True
             )
-            if self.enable_cpu_offload:
-                self.pipe.enable_model_cpu_offload()
+            self.pipe.enable_model_cpu_offload()
+            self.pipe.vae.enable_slicing()
+            self.pipe.vae.enable_tiling()
+
             return self.pipe
         except Exception as e:
             logger.error(f"Error initializing Flux model: {e}")
