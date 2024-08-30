@@ -183,9 +183,27 @@ class BentoSwitchService:
         except ModelLoadException as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+    @app.get("/v1/models")
+    def list_models(self):
+        _, model_configs = load_model_configs()
+        models_list = [
+            {
+                "id": model_name,
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "organization-owner",
+            }
+            for model_name in model_configs.keys()
+        ]
+        return {
+            "object": "list",
+            "data": models_list,
+        }
 
-@app.get("/service-info")
-async def service_info(
-    service: BentoSwitchService = Depends(bentoml.get_current_service),
-):
-    return f"Service is using model: {service.model_manager.get_current_model_name()}"
+    @app.get("/service-info")
+    async def service_info(
+        service: BentoSwitchService = Depends(bentoml.get_current_service),
+    ):
+        return (
+            f"Service is using model: {service.model_manager.get_current_model_name()}"
+        )
