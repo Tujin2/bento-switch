@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from model_wrappers import WrapperFactory
-from model_wrappers.base import BaseModelWrapper
-from model_wrappers.llama import LLaMAWrapper
+from models import WrapperFactory
+from models.base import BaseModelWrapper
+from models.llama import LLaMAWrapper
 
 
 class TestWrapperFactory(unittest.TestCase):

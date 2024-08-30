@@ -1,5 +1,5 @@
 import unittest
-from model_wrappers.base import BaseModelWrapper
+from models.base import BaseModelWrapper
 
 
 class DummyWrapper(BaseModelWrapper):

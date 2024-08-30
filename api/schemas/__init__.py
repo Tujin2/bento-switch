@@ -1,4 +1,4 @@
-from .common import Message
+from .common import Message, GenerationParameters
 from .raw import RawCompletionRequest, RawCompletionResponse
 from .openAI import (
     ChatCompletionRequest,
@@ -9,6 +9,7 @@ from .openAI import (
 
 __all__ = [
     "Message",
+    "GenerationParameters",
     "RawCompletionRequest",
     "RawCompletionResponse",
     "ChatCompletionRequest",

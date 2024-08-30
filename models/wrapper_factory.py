@@ -2,7 +2,7 @@ import yaml
 from typing import Dict, Type
 from .base import BaseModelWrapper
 from .llama import LLaMAWrapper
-from constants import DEFAULT_N_CONTEXT, DEFAULT_N_GPU_LAYERS
+from utils.constants import DEFAULT_N_CONTEXT, DEFAULT_N_GPU_LAYERS
 
 
 class WrapperFactory:

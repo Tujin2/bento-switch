@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from model_wrappers.llama import LLaMAWrapper
+from models.llama import LLaMAWrapper
 from api.schemas import Message
 
 
