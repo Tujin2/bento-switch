@@ -1,4 +1,3 @@
-import yaml
 from typing import Dict, Type
 from .base import BaseModelWrapper
 from .llama import LLaMAWrapper
@@ -31,12 +30,13 @@ class WrapperFactory:
     }
 
     @classmethod
-    def get_wrapper(cls, model_name: str) -> BaseModelWrapper:
+    def get_wrapper(cls, model_name: str, model_config: Dict) -> BaseModelWrapper:
         """
         Get the appropriate model wrapper based on the model type.
 
         Args:
             model_name (str): The name of the model.
+            model_config (Dict): The specific model configuration.
 
         Returns:
             BaseModelWrapper: An instance of the appropriate model wrapper.
@@ -44,27 +44,19 @@ class WrapperFactory:
         Raises:
             ValueError: If the model type is not supported.
         """
-        with open("model_configs.yaml", "r") as file:
-            config = yaml.safe_load(file)
-
-        model_config = config["models"].get(model_name)
-        if not model_config:
-            raise ValueError(f"Model {model_name} not found in configuration")
-
         wrapper_class = cls._wrappers.get(model_config["type"].lower())
         if not wrapper_class:
             raise ValueError(f"Unsupported model type: {model_config['type']}")
 
         wrapper = wrapper_class(
+            model_name=model_name,
             model_path=model_config["path"],
             n_context=model_config.get("n_context", DEFAULT_N_CONTEXT),
             n_gpu_layers=model_config.get("n_gpu_layers", DEFAULT_N_GPU_LAYERS),
             prompt_template=model_config.get("prompt_template"),
             system_message_template=model_config.get("system_message_template"),
-            conversation_message_template=model_config.get(
-                "conversation_message_template"
-            ),
-            auto_format=True,
+            conversation_message_template=model_config.get("conversation_message_template"),
+            default_params=model_config.get("default_params", {})
         )
 
         return wrapper

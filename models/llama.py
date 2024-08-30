@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Dict
 from llama_cpp import Llama
 from .base import BaseModelWrapper
 from api.schemas import Message
@@ -11,20 +11,22 @@ logger = logging.getLogger("bentoml")
 class LLaMAWrapper(BaseModelWrapper):
     def __init__(
         self,
+        model_name: str,
         model_path: str,
         n_context: int,
         n_gpu_layers: int,
         prompt_template: str = None,
         system_message_template: str = None,
         conversation_message_template: str = None,
-        auto_format: bool = True,
+        default_params: Dict = None,
     ):
-        self.model_path = model_path
+        super().__init__(
+            model_name=model_name,
+            model_path=model_path,
+            default_params=default_params
+        )
         self.n_context = n_context
         self.n_gpu_layers = n_gpu_layers
-        super().__init__(
-            model_name="llama", model_path=model_path, auto_format=auto_format
-        )
         if prompt_template:
             self.set_prompt_template(prompt_template)
         if system_message_template:
@@ -70,7 +72,7 @@ class LLaMAWrapper(BaseModelWrapper):
                 self.conversation_message_template.format(
                     role=msg.role, content=msg.content
                 )
-                for msg in messages[-15:]
+                for msg in messages[-20:]
                 if msg.role in {"user", "assistant"}
             )
 
@@ -81,7 +83,7 @@ class LLaMAWrapper(BaseModelWrapper):
 
             logger.debug(
                 f"Formatted prompt: {formatted_prompt[:500]}..."
-            )  # Log first 100 chars
+            )  # Log first 500 chars
             return formatted_prompt
         except Exception as e:
             logger.error(f"Error in create_prompt: {str(e)}")
@@ -91,7 +93,9 @@ class LLaMAWrapper(BaseModelWrapper):
         logger.debug(f"Generating response for prompt: {prompt[:50]}...")
         try:
             self.load_model()  # Ensure model is loaded
-            return self.model(prompt=prompt, **kwargs)
+            # Merge default_params with kwargs, giving priority to kwargs
+            params = {**self.default_params, **kwargs}
+            return self.model(prompt=prompt, **params)
         except Exception as e:
             logger.error(f"Error in get_response method: {e}")
             raise

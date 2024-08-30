@@ -2,15 +2,10 @@ from fastapi import HTTPException
 from bentoml import api
 from models.exceptions import ModelNotFoundException, ModelLoadException
 from .schemas import RawCompletionRequest, RawCompletionResponse
-from utils.config_loader import load_model_configs
 import logging
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Load model configuration
-default_model_name, model_defaults = load_model_configs()
 
 
 @api(route="/v1/raw_completion")
@@ -30,12 +25,16 @@ async def create_raw_completion(
         raise HTTPException(status_code=500, detail=str(e))
 
     model_wrapper = self.model_manager.get_current_model()
+    model_specific_defaults = model_wrapper.default_params
 
     prompt = model_wrapper.create_prompt(request.messages)
     raw_output = model_wrapper.get_response(
         prompt,
-        temperature=request.temperature,
-        max_tokens=request.max_tokens,
+        temperature=request.temperature or model_specific_defaults.get("temperature"),
+        max_tokens=request.max_tokens or model_specific_defaults.get("max_tokens"),
+        top_p=request.top_p or model_specific_defaults.get("top_p"),
+        top_k=request.top_k or model_specific_defaults.get("top_k"),
+        stream=request.stream or model_specific_defaults.get("stream"),
     )
     logger.info("Raw completion successful")
     return RawCompletionResponse(raw_output=raw_output)

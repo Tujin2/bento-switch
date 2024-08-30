@@ -11,15 +11,11 @@ from utils.constants import (
     DEFAULT_TOP_K,
     DEFAULT_STREAM,
 )
-from utils.config_loader import load_model_configs
 import logging
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Load model configuration
-default_model_name, model_defaults = load_model_configs()
 
 
 @api(route="/v1/chat/completions", input_spec=ChatCompletionRequest)
@@ -38,34 +34,20 @@ async def create_chat_completion(self, **request: t.Any):
     self.formatter.current_stream_id = None
     self.formatter.creation_timestamp = None
 
-    model_specific_defaults = model_defaults.get(model_name, {}).get(
-        "default_params", {}
-    )
+    model_specific_defaults = model_wrapper.default_params
 
     # Merge request parameters with model-specific defaults and service-wide defaults
     generation_params = GenerationParameters(
-        temperature=request.get(
-            "temperature",
-            model_specific_defaults.get("temperature", DEFAULT_TEMPERATURE),
-        )
-        or DEFAULT_TEMPERATURE,
-        max_tokens=request.get(
-            "max_tokens",
-            model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS),
-        )
-        or DEFAULT_MAX_TOKENS,
-        top_p=request.get(
-            "top_p", model_specific_defaults.get("top_p", DEFAULT_TOP_P)
-        )
-        or DEFAULT_TOP_P,
-        top_k=request.get(
-            "top_k", model_specific_defaults.get("top_k", DEFAULT_TOP_K)
-        )
-        or DEFAULT_TOP_K,
-        stream=request.get(
-            "stream", model_specific_defaults.get("stream", DEFAULT_STREAM)
-        )
-        or DEFAULT_STREAM,
+        temperature=request.get("temperature")
+        or model_specific_defaults.get("temperature", DEFAULT_TEMPERATURE),
+        max_tokens=request.get("max_tokens")
+        or model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS),
+        top_p=request.get("top_p")
+        or model_specific_defaults.get("top_p", DEFAULT_TOP_P),
+        top_k=request.get("top_k")
+        or model_specific_defaults.get("top_k", DEFAULT_TOP_K),
+        stream=request.get("stream")
+        or model_specific_defaults.get("stream", DEFAULT_STREAM),
     )
 
     messages = request.get("messages", [])
@@ -103,7 +85,5 @@ async def create_chat_completion(self, **request: t.Any):
         yield "data: [DONE]\n\n"  # Signal that streaming is complete
     else:
         logger.debug("Non-streaming response")
-        formatted_response = self.formatter.format_response(
-            response, streaming=False
-        )
+        formatted_response = self.formatter.format_response(response, streaming=False)
         yield formatted_response

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 import bentoml
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 
 from models.model_manager import ModelManager
 from models.exceptions import ModelNotFoundException, ModelLoadException
@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load model configuration
-default_model_name, model_defaults = load_model_configs()
+default_model_name, model_configs = load_model_configs()
 
 
 @bentoml.service(
@@ -37,12 +37,11 @@ default_model_name, model_defaults = load_model_configs()
 @bentoml.mount_asgi_app(app, path="/")
 class BentoSwitchService:
     def __init__(self):
-        self.model_manager = ModelManager()
-        self.default_model_name = default_model_name
+        self.model_manager = ModelManager(model_configs)
         self.formatter = FormatterFactory.get_formatter("openai")
         # Load the default model
         try:
-            self.model_manager.switch_model(self.default_model_name)
+            self.model_manager.load_model(default_model_name)
         except (ModelNotFoundException, ModelLoadException) as e:
             logger.error(f"Failed to load default model: {str(e)}")
 
@@ -52,7 +51,7 @@ class BentoSwitchService:
 
     @app.get("/v1/models")
     def list_models(self):
-        _, model_configs = load_model_configs()
+        model_configs = self.model_manager.get_model_configs()
         models_list = [
             {
                 "id": model_name,
@@ -68,9 +67,5 @@ class BentoSwitchService:
         }
 
     @app.get("/service-info")
-    async def service_info(
-        service: BentoSwitchService = Depends(bentoml.get_current_service),
-    ):
-        return (
-            f"Service is using model: {service.model_manager.get_current_model_name()}"
-        )
+    def service_info(self):
+        return f"Service is using model: {self.model_manager.get_current_model_name()}"

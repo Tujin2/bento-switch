@@ -30,9 +30,6 @@ def load_model_configs(config_path="model_configs.yaml"):
             else:
                 raise ValueError("No models found in the configuration file.")
 
-        model_defaults = {
-            model_name: model_config.get("default_params", {})
-            for model_name, model_config in config["models"].items()
-        }
+        model_configs = config["models"]
 
-        return default_model_name, model_defaults
+        return default_model_name, model_configs

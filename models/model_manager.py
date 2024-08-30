@@ -4,32 +4,35 @@ import logging
 import time
 import gc
 from .exceptions import ModelNotFoundException, ModelLoadException
-from utils.config_loader import load_model_configs
 
 logger = logging.getLogger(__name__)
 
 
 class ModelManager:
-    def __init__(self):
+    def __init__(self, model_configs):
         self.loaded_model: BaseModelWrapper = None
         self.wrapper_factory = WrapperFactory()
-        self.current_model_name: str = None
+        self.model_configs = model_configs
 
     def load_model(self, model_name: str) -> tuple[bool, BaseModelWrapper]:
-        if self.current_model_name != model_name:
-            logger.info(
-                f"Attempting to switch from {self.current_model_name} to {model_name}"
-            )
+        if self.loaded_model is None or (self.loaded_model and self.loaded_model.model_name != model_name):
+            logger.info(f"Attempting to load {model_name}")
             if self.loaded_model:
+                loadedModelName = self.loaded_model.model_name
+                logger.info(f"Attempting to unload {loadedModelName}")
                 self.loaded_model.cleanup()
                 self.loaded_model = None
                 gc.collect()
                 time.sleep(1)
+                logger.info(f"Successfully unloaded {loadedModelName}")
 
             try:
-                new_model = self.wrapper_factory.get_wrapper(model_name)
+                model_config = self.model_configs.get(model_name)
+                if not model_config:
+                    raise ValueError(f"Model {model_name} not found in configuration")
+                logger.debug(f"Attempting to load {model_name} with config: {model_config}")
+                new_model = self.wrapper_factory.get_wrapper(model_name, model_config)
                 self.loaded_model = new_model
-                self.current_model_name = model_name
                 logger.info(f"Successfully switched to {model_name}")
                 return True, self.loaded_model
             except Exception as e:
@@ -42,14 +45,13 @@ class ModelManager:
         return self.loaded_model
 
     def get_current_model_name(self) -> str:
-        return self.current_model_name
+        return self.loaded_model.model_name if self.loaded_model else None
 
     def is_model_loaded(self, model_name: str) -> bool:
-        return self.current_model_name == model_name
+        return self.loaded_model and self.loaded_model.model_name == model_name
 
     def switch_model(self, model_name: str) -> None:
-        _, model_configs = load_model_configs()
-        if model_name not in model_configs:
+        if model_name not in self.model_configs:
             logger.error(f"Model '{model_name}' not found in configurations")
             raise ModelNotFoundException(f"Model '{model_name}' not found")
 
@@ -59,3 +61,6 @@ class ModelManager:
             raise ModelLoadException(f"Failed to load model: {model_name}")
 
         logger.info(f"Successfully switched to model: {model_name}")
+
+    def get_model_configs(self):
+        return self.model_configs
