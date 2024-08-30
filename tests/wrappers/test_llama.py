@@ -6,18 +6,22 @@ from api.schemas import Message
 
 class TestLLaMAWrapper(unittest.TestCase):
 
-    @patch("model_wrappers.llama.Llama")
-    def setUp(self, mock_llama):
+    def setUp(self):
+        self.mock_llama = patch("models.llama.Llama").start()
         self.mock_model = MagicMock()
-        mock_llama.return_value = self.mock_model
+        self.mock_llama.return_value = self.mock_model
+
         self.wrapper = LLaMAWrapper(
-            model_path="/path/to/llama/model",
+            model_path="/mock/path/to/llama/model",
             n_context=2048,
             n_gpu_layers=-1,
-            prompt_template="<s> [INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{prompt} [/INST] </s>",
-            auto_format=True
+            auto_format=True,
         )
-        self.wrapper.model_name = "llama-7b"  # Ensure model_name is set
+        self.wrapper.model_name = "llama-7b"
+        self.wrapper.model = self.mock_model  # Set the mocked model directly
+
+    def tearDown(self):
+        patch.stopall()
 
     def test_create_prompt(self):
         messages = [Message(role="user", content="Hello, how are you?")]

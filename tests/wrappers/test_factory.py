@@ -2,12 +2,13 @@ import unittest
 from unittest.mock import patch, MagicMock
 from models import WrapperFactory
 from models.base import BaseModelWrapper
-from models.llama import LLaMAWrapper
 
 
 class TestWrapperFactory(unittest.TestCase):
 
-    @patch("model_wrappers.llama.Llama")
+    @patch.dict(
+        "models.wrapper_factory.WrapperFactory._wrappers", {"llama": MagicMock()}
+    )
     @patch(
         "builtins.open",
         new_callable=unittest.mock.mock_open,
@@ -21,14 +22,22 @@ class TestWrapperFactory(unittest.TestCase):
         path: /path/to/dummy/model
     """,
     )
-    def test_wrapper_factory_creation(self, mock_open, mock_llama):
+    def test_wrapper_factory_creation(self, mock_open):
+        mock_llama_wrapper = WrapperFactory._wrappers["llama"]
+
         # Test creation of LLaMA wrapper
         wrapper = WrapperFactory.get_wrapper("llama-7b")
-        self.assertIsInstance(wrapper, LLaMAWrapper)
-        self.assertIsInstance(wrapper, BaseModelWrapper)
-        mock_llama.assert_called_once_with(
-            model_path="/path/to/llama/model", n_gpu_layers=-1, n_ctx=2048  # defaults
+
+        mock_llama_wrapper.assert_called_once_with(
+            model_path="/path/to/llama/model",
+            n_gpu_layers=-1,
+            n_context=2048,
+            prompt_template=None,
+            system_message_template=None,
+            conversation_message_template=None,
+            auto_format=True,
         )
+        self.assertEqual(wrapper, mock_llama_wrapper.return_value)
 
     @patch(
         "builtins.open",
@@ -45,7 +54,7 @@ class TestWrapperFactory(unittest.TestCase):
         with self.assertRaises(ValueError):
             WrapperFactory.get_wrapper("invalid_model")
 
-    @patch("model_wrappers.llama.Llama")
+    @patch("models.llama.Llama")
     @patch(
         "builtins.open",
         new_callable=unittest.mock.mock_open,
