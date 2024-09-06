@@ -1,3 +1,5 @@
+keep_model_loaded: false
+model_unload_delay_secs: 600
 default_model: Nymeria-15B-Q8
 models:
   Codestral-22B-v0.1:

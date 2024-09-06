@@ -60,6 +60,7 @@ class LLaMAWrapper(BaseModelWrapper):
 
     def create_prompt(self, messages: List[Message]) -> str:
         logger.debug(f"Creating prompt from {len(messages)} messages")
+        logger.debug(f"Last message content: {messages[-1].content if messages else 'No messages'}")
         try:
             system_prompt = next(
                 (msg.content for msg in messages if msg.role == "system"), ""
@@ -72,7 +73,7 @@ class LLaMAWrapper(BaseModelWrapper):
                 self.conversation_message_template.format(
                     role=msg.role, content=msg.content
                 )
-                for msg in messages[-20:]
+                for msg in messages[-30:]
                 if msg.role in {"user", "assistant"}
             )
 
@@ -95,6 +96,7 @@ class LLaMAWrapper(BaseModelWrapper):
             self.load_model()  # Ensure model is loaded
             # Merge default_params with kwargs, giving priority to kwargs
             params = {**self.default_params, **kwargs}
+            logger.debug(f"Params: {params}")
             return self.model(prompt=prompt, **params)
         except Exception as e:
             logger.error(f"Error in get_response method: {e}")

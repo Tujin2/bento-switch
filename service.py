@@ -9,18 +9,19 @@ from models.model_manager import ModelManager
 from models.exceptions import ModelNotFoundException, ModelLoadException
 from response_formatters.formatter_factory import FormatterFactory
 from utils.config_loader import load_model_configs
-from api import create_chat_completion, create_raw_completion, switch_model
+from api import (
+    create_chat_completion,
+    create_raw_completion,
+    switch_model,
+)
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load model configuration
-default_model_name, model_configs = load_model_configs()
-
 
 @bentoml.service(
-    resources={"cpu": "14", "memory": "48Gi"},
+    resources={"cpu": "18", "memory": "48Gi"},
     traffic={"timeout": 10},
     logging={
         "access": {
@@ -37,13 +38,28 @@ default_model_name, model_configs = load_model_configs()
 @bentoml.mount_asgi_app(app, path="/")
 class BentoSwitchService:
     def __init__(self):
-        self.model_manager = ModelManager(model_configs)
+        (
+            default_model_name,
+            model_configs,
+            keep_model_loaded,
+            model_unload_delay_secs,
+        ) = load_model_configs()
+        self.model_manager = ModelManager(
+            model_configs,
+            keep_model_loaded=keep_model_loaded,
+            unload_delay_secs=model_unload_delay_secs,
+        )
         self.formatter = FormatterFactory.get_formatter("openai")
         # Load the default model
-        try:
-            self.model_manager.load_model(default_model_name)
-        except (ModelNotFoundException, ModelLoadException) as e:
-            logger.error(f"Failed to load default model: {str(e)}")
+        if keep_model_loaded:
+            try:
+                self.model_manager.load_model(default_model_name)
+            except (ModelNotFoundException, ModelLoadException) as e:
+                logger.error(f"Failed to load default model: {str(e)}")
+        else:
+            logger.info(
+                "keep_model_loaded is False, skipping loading of default model."
+            )
 
     create_chat_completion = create_chat_completion
     create_raw_completion = create_raw_completion
