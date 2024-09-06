@@ -14,12 +14,16 @@ class ModelManager:
         self.loaded_model: BaseModelWrapper = None
         self.wrapper_factory = WrapperFactory()
         self.model_configs = model_configs
-        self.keep_model_loaded = keep_model_loaded
         self.model_unload_delay_secs = unload_delay_secs
         self.unload_timer = None
         self.last_use_time = 0
+        self.mode = "keep_loaded"  # Default mode
 
     def load_model(self, model_name: str) -> tuple[bool, BaseModelWrapper]:
+        if self.mode == "off":
+            logger.info("Model loading is disabled (Off mode).")
+            return False, None
+
         if self.loaded_model is None or (self.loaded_model and self.loaded_model.model_name != model_name):
             self._cancel_unload_timer()
             if self.loaded_model:
@@ -48,7 +52,7 @@ class ModelManager:
             time.sleep(1)
 
     def schedule_unload(self):
-        if not self.keep_model_loaded:
+        if self.mode == "dynamic":
             if self.unload_timer:
                 self.unload_timer.cancel()
 
@@ -90,3 +94,11 @@ class ModelManager:
 
     def get_model_configs(self):
         return self.model_configs
+
+    def set_mode(self, mode: str, timeout: int = 0):
+        self.mode = mode
+        if mode == "dynamic":
+            self.model_unload_delay_secs = timeout
+        elif mode == "off":
+            self._unload_current_model()
+        logger.info(f"ModelManager mode set to {mode} with timeout {timeout} seconds.")

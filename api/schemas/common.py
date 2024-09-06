@@ -19,3 +19,8 @@ class UsageInfo(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
+
+
+class SettingsUpdateRequest(BaseModel):
+    mode: str
+    timeout: int = 0

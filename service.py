@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 import bentoml
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from models.model_manager import ModelManager
 from models.exceptions import ModelNotFoundException, ModelLoadException
@@ -14,6 +14,8 @@ from api import (
     create_raw_completion,
     switch_model,
 )
+from api.schemas import SettingsUpdateRequest
+
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -85,3 +87,11 @@ class BentoSwitchService:
     @app.get("/service-info")
     def service_info(self):
         return f"Service is using model: {self.model_manager.get_current_model_name()}"
+
+    @app.post("/settings")
+    def update_settings(self, request: SettingsUpdateRequest):
+        try:
+            self.model_manager.set_mode(request.mode, request.timeout)
+            return {"message": "Settings updated successfully"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

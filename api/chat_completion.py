@@ -37,6 +37,8 @@ async def create_chat_completion(self, **request: t.Any):
 
     model_specific_defaults = model_wrapper.default_params
 
+    logger.debug("request: " + str(request))
+
     # Merge request parameters with model-specific defaults and service-wide defaults
     generation_params = GenerationParameters(
         temperature=request.get("temperature")
@@ -47,8 +49,7 @@ async def create_chat_completion(self, **request: t.Any):
         or model_specific_defaults.get("top_p", DEFAULT_TOP_P),
         top_k=request.get("top_k")
         or model_specific_defaults.get("top_k", DEFAULT_TOP_K),
-        stream=request.get("stream")
-        or model_specific_defaults.get("stream", DEFAULT_STREAM),
+        stream=request.get("stream", model_specific_defaults.get("stream", DEFAULT_STREAM)),
     )
 
     messages = request.get("messages", [])
@@ -64,41 +65,50 @@ async def create_chat_completion(self, **request: t.Any):
     )
 
     try:
-        batch = ""
-        for raw_response in response:
-            logger.debug("Streaming response")
-            batch += raw_response["choices"][0]["text"]
-            logger.debug('batch: ' + batch)
+        if generation_params.stream:
+            batch = ""
+            for raw_response in response:
+                logger.debug("Streaming response")
+                batch += raw_response["choices"][0]["text"]
+                logger.debug('batch: ' + batch)
 
-            if len(batch) >= DEFAULT_BATCH_SIZE:
+                if len(batch) >= DEFAULT_BATCH_SIZE:
+                    try:
+                        formatted_response = self.formatter.format_response(
+                            {"choices": [{"text": batch}]}, streaming=True
+                        )
+                        yield f"data: {json.dumps(formatted_response)}\n\n"
+                        batch = ""  # Reset the batch after sending
+                    except AttributeError as ae:
+                        logger.error(f"AttributeError in formatting response: {str(ae)}")
+                        logger.error(f"Raw response causing error: {batch}")
+                        batch = ""  # Reset the batch even if there's an error
+                    except Exception as e:
+                        logger.error(f"Error in formatting response: {str(e)}")
+                        logger.error(f"Raw response causing error: {batch}")
+                        batch = ""  # Reset the batch even if there's an error
+
+            # Send any remaining responses in the batch
+            if batch:
                 try:
                     formatted_response = self.formatter.format_response(
                         {"choices": [{"text": batch}]}, streaming=True
                     )
                     yield f"data: {json.dumps(formatted_response)}\n\n"
-                    batch = ""  # Reset the batch after sending
                 except AttributeError as ae:
                     logger.error(f"AttributeError in formatting response: {str(ae)}")
                     logger.error(f"Raw response causing error: {batch}")
-                    batch = ""  # Reset the batch even if there's an error
                 except Exception as e:
                     logger.error(f"Error in formatting response: {str(e)}")
                     logger.error(f"Raw response causing error: {batch}")
-                    batch = ""  # Reset the batch even if there's an error
-
-        # Send any remaining responses in the batch
-        if batch:
-            try:
-                formatted_response = self.formatter.format_response(
-                    {"choices": [{"text": batch}]}, streaming=True
+        else:
+            logger.info("Non-streaming response: " + str(response))
+            # Handle non-streaming response
+            formatted_response = self.formatter.format_response(
+                response, streaming=False
                 )
-                yield f"data: {json.dumps(formatted_response)}\n\n"
-            except AttributeError as ae:
-                logger.error(f"AttributeError in formatting response: {str(ae)}")
-                logger.error(f"Raw response causing error: {batch}")
-            except Exception as e:
-                logger.error(f"Error in formatting response: {str(e)}")
-                logger.error(f"Raw response causing error: {batch}")
+            yield formatted_response
+
     except AttributeError as ae:
         logger.error(f"AttributeError in formatting response: {str(ae)}")
         logger.error(f"Raw response causing error: {response}")
@@ -107,4 +117,5 @@ async def create_chat_completion(self, **request: t.Any):
         logger.error(f"Raw response causing error: {response}")
 
     self.model_manager.update_last_use_time()
-    yield "data: [DONE]\n\n"  # Signal that streaming is complete
+    if generation_params.stream:
+        yield "data: [DONE]\n\n"  # Signal that streaming is complete
