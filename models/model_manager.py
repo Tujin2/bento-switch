@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ModelManager:
-    def __init__(self, model_configs, keep_model_loaded=True, unload_delay_secs=0):
+    def __init__(self, model_configs, mode="dynamic", unload_delay_secs=0):
         self.loaded_model: BaseModelWrapper = None
         self.wrapper_factory = WrapperFactory()
         self.model_configs = model_configs

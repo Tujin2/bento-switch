@@ -1,4 +1,4 @@
-keep_model_loaded: false
+model_mode: 'dynamic' # dynamic, off, keep_loaded
 model_unload_delay_secs: 600
 default_model: Nymeria-15B-Q8
 models:

@@ -41,14 +41,10 @@ async def create_chat_completion(self, **request: t.Any):
 
     # Merge request parameters with model-specific defaults and service-wide defaults
     generation_params = GenerationParameters(
-        temperature=request.get("temperature")
-        or model_specific_defaults.get("temperature", DEFAULT_TEMPERATURE),
-        max_tokens=request.get("max_tokens")
-        or model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS),
-        top_p=request.get("top_p")
-        or model_specific_defaults.get("top_p", DEFAULT_TOP_P),
-        top_k=request.get("top_k")
-        or model_specific_defaults.get("top_k", DEFAULT_TOP_K),
+        temperature=request.get("temperature") or model_specific_defaults.get("temperature", DEFAULT_TEMPERATURE),
+        max_tokens=request.get("max_tokens") or model_specific_defaults.get("max_tokens", DEFAULT_MAX_TOKENS),
+        top_p=request.get("top_p") or model_specific_defaults.get("top_p", DEFAULT_TOP_P),
+        top_k=request.get("top_k") or model_specific_defaults.get("top_k", DEFAULT_TOP_K),
         stream=request.get("stream", model_specific_defaults.get("stream", DEFAULT_STREAM)),
     )
 

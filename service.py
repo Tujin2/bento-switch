@@ -43,17 +43,17 @@ class BentoSwitchService:
         (
             default_model_name,
             model_configs,
-            keep_model_loaded,
+            model_mode,
             model_unload_delay_secs,
         ) = load_model_configs()
         self.model_manager = ModelManager(
             model_configs,
-            keep_model_loaded=keep_model_loaded,
+            mode=model_mode,
             unload_delay_secs=model_unload_delay_secs,
         )
         self.formatter = FormatterFactory.get_formatter("openai")
         # Load the default model
-        if keep_model_loaded:
+        if model_mode == "keep_loaded":
             try:
                 self.model_manager.load_model(default_model_name)
             except (ModelNotFoundException, ModelLoadException) as e:

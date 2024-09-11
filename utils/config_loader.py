@@ -18,7 +18,7 @@ def load_model_configs(config_path="model_configs.yaml"):
                 "Invalid configuration file: 'models' section is missing or empty."
             )
 
-        keep_model_loaded = config.get("keep_model_loaded", True)
+        model_mode = config.get("model_mode", "dynamic")
         model_unload_delay_secs = config.get("model_unload_delay_secs", 0)
         default_model_name = config.get("default_model")
 
@@ -34,4 +34,4 @@ def load_model_configs(config_path="model_configs.yaml"):
 
         model_configs = config["models"]
 
-        return default_model_name, model_configs, keep_model_loaded, model_unload_delay_secs
+        return default_model_name, model_configs, model_mode, model_unload_delay_secs
