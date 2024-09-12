@@ -17,7 +17,7 @@ class ModelManager:
         self.model_unload_delay_secs = unload_delay_secs
         self.unload_timer = None
         self.last_use_time = 0
-        self.mode = "keep_loaded"  # Default mode
+        self.mode = mode
 
     def load_model(self, model_name: str) -> tuple[bool, BaseModelWrapper]:
         if self.mode == "off":
@@ -102,3 +102,14 @@ class ModelManager:
         elif mode == "off":
             self._unload_current_model()
         logger.info(f"ModelManager mode set to {mode} with timeout {timeout} seconds.")
+
+    def get_settings(self):
+        return {
+            "mode": self.mode,
+            "timeout": self.model_unload_delay_secs if self.mode == "dynamic" else None
+        }
+
+    def get_unload_time_remaining(self):
+        if self.unload_timer:
+            return self.unload_timer.interval - (time.time() - self.unload_timer.last_start_time)
+        return None

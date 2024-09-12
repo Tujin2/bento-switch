@@ -84,9 +84,19 @@ class BentoSwitchService:
             "data": models_list,
         }
 
+    @app.get("/settings")
+    def get_settings(self):
+        return self.model_manager.get_settings()
+
     @app.get("/service-info")
     def service_info(self):
-        return f"Service is using model: {self.model_manager.get_current_model_name()}"
+        info = {
+            "current_loaded_model": self.model_manager.get_current_model_name()
+        }
+        unload_time_remaining = self.model_manager.get_unload_time_remaining()
+        if unload_time_remaining:
+            info["unload_time_remaining"] = unload_time_remaining
+        return info
 
     @app.post("/settings")
     def update_settings(self, request: SettingsUpdateRequest):
