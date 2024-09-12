@@ -111,5 +111,5 @@ class ModelManager:
 
     def get_unload_time_remaining(self):
         if self.unload_timer:
-            return self.unload_timer.interval - (time.time() - self.unload_timer.last_start_time)
+            return self.unload_timer.interval - (time.time() - self.last_use_time)
         return None
